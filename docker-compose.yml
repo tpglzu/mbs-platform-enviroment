@@ -1,4 +1,4 @@
-version: '2' 
+version: '2'
 services:
   namenode:
     image: bde2020/hadoop-namenode:1.1.0-hadoop2.8-java8
@@ -32,7 +32,7 @@ services:
       - 8188:8188
   datanode:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.8-java8
-    depends_on: 
+    depends_on:
       - namenode
     volumes:
       - ~/data/datanode:/hadoop/dfs/data
@@ -42,7 +42,7 @@ services:
       - 50075:50075
   datanode2:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.8-java8
-    depends_on: 
+    depends_on:
       - namenode
     volumes:
       - ~/data/datanode2:/hadoop/dfs/data
@@ -52,7 +52,7 @@ services:
       - 50076:50075
   datanode3:
     image: bde2020/hadoop-datanode:1.1.0-hadoop2.8-java8
-    depends_on: 
+    depends_on:
       - namenode
     volumes:
       - ~/data/datanode3:/hadoop/dfs/data
@@ -119,3 +119,71 @@ services:
     container_name: mongodb
     ports:
       - 27017:27017
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    restart: always
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  nimbus:
+    image: storm
+    container_name: nimbus
+    command: storm nimbus
+    depends_on:
+      - zookeeper
+    links:
+      - zookeeper
+    restart: always
+    ports:
+      - 6627:6627
+
+  supervisor:
+    image: storm
+    container_name: supervisor
+    command: storm supervisor
+    depends_on:
+      - nimbus
+      - zookeeper
+    links:
+      - nimbus
+      - zookeeper
+    restart: always
+    ports:
+      - 8000
+      - 22
+      - 6701
+    volumes:
+      - /home/tangpg/docker-hadoop-spark-hive/storm.yaml:/conf/storm.yaml
+
+  storm-ui:
+    image: storm
+    container_name: storm-ui
+    command: storm ui
+    depends_on:
+      - nimbus
+      - zookeeper
+    links:
+      - nimbus
+      - zookeeper
+    restart: always
+    ports:
+      - 28080:8080
+
+networks:
+  default:
+    name: mbs-platform-network
+
